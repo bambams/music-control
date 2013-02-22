@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cmus-remote --query | perl -nE '
+        $left=$1 if /vol_left ([0-9]+)/;
+        $right=$1 if /vol_right ([0-9]+)/}{
+        if(defined $left and defined $right && $left != $right) {
+            say "$left $right";
+        } elsif(defined (my $vol = $left // $right)) {
+            say $vol;
+        }'

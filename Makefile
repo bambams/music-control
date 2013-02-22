@@ -12,3 +12,4 @@ install:
 	ln -fs "`pwd`/lib/prev" '$(PREFIX)/bin/<-';
 	ln -fs "`pwd`/lib/volup" '$(PREFIX)/bin/+';
 	ln -fs "`pwd`/lib/voldn" '$(PREFIX)/bin/-';
+	ln -fs "`pwd`/lib/vol" '$(PREFIX)/bin/~';
