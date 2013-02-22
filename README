@@ -1,0 +1,21 @@
+This is just a simple project with wrapper scripts around my music player
+of choice so I can [more] easily control it from the command-line. Since
+cmus already has cmus-remote for that this might seem redundant, but these
+wrappers just provider much shorter commands to control it so that I don't
+have to type 15+ characters for every operation.
+
+The lib directory contains semantically named scripts. The Makefile
+installs symlinks with more symbolic names into PREFIX/bin. The default
+install destination is $HOME.
+
+>    Play.
+=    Pause.
+[]   Stop.
+->   Next song.
+<-   Previous song.
++    Increase volume.
+-    Decrease volume.
+
+Keep in mind that some of these characters are special to some shells so
+you will need to escape or quote them. E.g., in most UNIX shells you would
+type \> for play.
