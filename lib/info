@@ -1,0 +1,35 @@
+#!/bin/bash
+
+perl -E '
+    use strict;
+    use warnings;
+
+    open my $fh, q/-|/, q/cmus-remote --query/ or die "pipe: $!";
+
+    my ($artist, $album, $track, $title, $time, $total_time);
+
+    while(<$fh>) {
+        if(/^tag artist (.+)/) {
+            $artist = $1;
+        } elsif(/^tag album (.+)/) {
+            $album = $1;
+        } elsif(/^tag title (.+)/) {
+            $title = $1;
+        } elsif(/^tag tracknumber ([0-9+])/) {
+            $track = $1;
+        } elsif(/^duration ([0-9]+)/) {
+            $total_time = secs_to_time($1);
+        } elsif(/^position ([0-9]+)/) {
+            $time = secs_to_time($1);
+        }
+    }
+
+    say qq($track. $title ($time/$total_time) ($artist "$album"));
+
+    sub secs_to_time {
+        my ($secs) = @_;
+        my $mins = int($secs / 60);
+        $secs = $secs % 60;
+        return sprintf "%02d:%02d", $mins, $secs;
+    }
+'
