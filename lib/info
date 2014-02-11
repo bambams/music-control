@@ -1,21 +1,52 @@
-#!/bin/bash
+#!/usr/bin/perl
 
-perl -E '
-    use strict;
-    use warnings;
+use strict;
+use warnings;
 
-    open my $fh, q/-|/, q/cmus-remote --query/ or die "pipe: $!";
+use constant {
+    RESET_COLOR => '0m',
+};
 
-    my ($artist, $album, $track, $title, $time, $total_time);
+my $color_prompt = 0;
+my $format = "\r%s%s";
+my $formatter = \&long_format;
+my $loop = 1;
+my $suffix = '';
+
+my %dispatch = (
+    qr'--color-prompt' => sub { $color_prompt = 1; },
+    qr'--suffix=(.+)' => sub { ($suffix) = $1 },
+    qr'-1|--oneline' => sub { $format = "%s%s\n"; $loop = 0; },
+    qr'-s|--short' => sub { $formatter = \&short_format if $_ ~~ \@ARGV },
+);
+
+my %statuses = (
+    paused => '=',
+    playing => '►',
+    stopped => '■',
+);
+
+for (@ARGV) {
+    for my $re (keys %dispatch) {
+        $dispatch{$re}->($_) if /^(?:$re)$/;
+    }
+}
+
+do {
+    open my $fh, '-|', 'cmus-remote --query 2>/dev/null' or die "pipe: $!";
+
+    my ($artist, $album, $status, $track, $title, $time, $total_time);
 
     while(<$fh>) {
         if(/^tag artist (.+)/) {
-            $artist = $1;
+            $artist = $1 =~ s/\s+(?:f\.?|feat\.?|featuring)\b.*//ir;
         } elsif(/^tag album (.+)/) {
             $album = $1;
+        } elsif(/^status (\w+)/) {
+            $status = $statuses{$1};
         } elsif(/^tag title (.+)/) {
             $title = $1;
-        } elsif(/^tag tracknumber ([0-9+])/) {
+        } elsif(/^tag tracknumber ([0-9]+)/) {
             $track = $1;
         } elsif(/^duration ([0-9]+)/) {
             $total_time = secs_to_time($1);
@@ -24,12 +55,78 @@ perl -E '
         }
     }
 
-    say qq($track. $title ($time/$total_time) ($artist "$album"));
+    close $fh;
 
-    sub secs_to_time {
-        my ($secs) = @_;
-        my $mins = int($secs / 60);
-        $secs = $secs % 60;
-        return sprintf "%02d:%02d", $mins, $secs;
+    exit 1 if $? >> 8 != 0 || grep !defined, $artist, $album, $title;
+
+    printf $format, $formatter->(
+            format_field(artist => $artist),
+            format_field(album => $album),
+            format_field(status => $status),
+            format_field(time => $time),
+            format_field(title => $title),
+            format_field(total_time => $total_time),
+            format_field(track => $track),
+            ),
+            $suffix;
+} while($loop);
+
+sub long_format {
+    my %opts = @_;
+
+    return sprintf '%s %s. %s (%s/%s) (%s "%s")',
+            @opts{qw/status track title time total_time artist album/};
+}
+
+sub secs_to_time {
+    my ($secs) = @_;
+    my $mins = int($secs / 60);
+    $secs = $secs % 60;
+    return sprintf "%02d:%02d", $mins, $secs;
+}
+
+sub short_format {
+    my %opts = @_;
+
+    return sprintf '%s %s. %s',
+            @opts{qw/status track title/};
+}
+
+# h4x... Prompt colr stuffz follows.
+
+sub get_prompt_color_code {
+    return "[0]";
+}
+
+sub format_field {
+    my %status_colors = (
+        '=' => '0;33m',
+        '►' => '0;32m',
+        '■' => '0;31m',
+    );
+
+    my %prompt_colors = (
+        album => sub { '0;35m' },
+        artist => sub { '0;35m' },
+        status => sub { $status_colors{$_[0]} },
+        time => sub { '0;35m' },
+        title => sub { '0;35m' },
+        total_time => sub { '0;35m' },
+        track => sub { '0;35m' },
+    );
+
+    my ($k,$v) = @_;
+
+    if($color_prompt) {
+        unless (exists $prompt_colors{$k}) {
+            warn "Prompt color doesn't exist: $k";
+        }
+
+        $v = sprintf "%s%s%s",
+                get_prompt_color_code($prompt_colors{$k}->($v)),
+                $v,
+                get_prompt_color_code(RESET_COLOR());
     }
-'
+
+    return ($k => $v);
+}
