@@ -92,10 +92,10 @@ sub short_format {
             @opts{qw/status track title/};
 }
 
-# h4x... Prompt colr stuffz follows.
+# h4x... Prompt color stuffz follows.
 
 sub get_prompt_color_code {
-    return "[0]";
+    return "\\[\\e[$_[0]\\]";
 }
 
 sub format_field {
