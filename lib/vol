@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 cmus-remote --query | perl -nE '
         $left=$1 if /vol_left ([0-9]+)/;
