@@ -35,7 +35,10 @@ for (@ARGV) {
 do {
     open my $fh, '-|', 'cmus-remote --query 2>/dev/null' or die "pipe: $!";
 
-    my ($artist, $album, $status, $track, $title, $time, $total_time);
+    my $artist = my $album = my $title = 'Unknown';
+    my $status = $statuses{stopped};
+    my $track = -1;
+    my $time  = my $total_time = '-0:00';
 
     while(<$fh>) {
         if(/^tag artist (.+)/) {
@@ -57,7 +60,7 @@ do {
 
     close $fh;
 
-    exit 1 if $? >> 8 != 0 || grep !defined, $artist, $album, $title;
+    exit 1 if $? >> 8 != 0;
 
     printf $format, $formatter->(
             format_field(artist => $artist),
