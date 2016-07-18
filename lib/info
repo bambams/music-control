@@ -17,7 +17,7 @@ my %dispatch = (
     qr'--color-prompt' => sub { $color_prompt = 1; },
     qr'--suffix=(.+)' => sub { ($suffix) = $1 },
     qr'-1|--oneline' => sub { $format = "%s%s\n"; $loop = 0; },
-    qr'-s|--short' => sub { $formatter = \&short_format if $_ ~~ \@ARGV },
+    qr'-s|--short' => sub { my $tmp = $_; $formatter = \&short_format if grep /$tmp/, @ARGV },
 );
 
 my %statuses = (
@@ -35,7 +35,7 @@ for (@ARGV) {
 do {
     open my $fh, '-|', 'cmus-remote --query 2>/dev/null' or die "pipe: $!";
 
-    my $artist = my $album = my $title = 'Unknown';
+    my $artist = my $album = my $title = my $vol = 'Unknown';
     my $status = $statuses{stopped};
     my $track = -1;
     my $time  = my $total_time = '-0:00';
@@ -55,6 +55,14 @@ do {
             $total_time = secs_to_time($1);
         } elsif(/^position ([0-9]+)/) {
             $time = secs_to_time($1);
+        } elsif(/^set vol_(left|right) ([0-9]+)/) {
+            my $volx = $2;
+
+            if ($vol ne 'Unknown' && $vol != $volx) {
+                warn "Volume is unbalanced ($vol vs $volx).\n";
+            }
+
+            $vol = $volx;
         }
     }
 
@@ -70,6 +78,7 @@ do {
             format_field(title => $title),
             format_field(total_time => $total_time),
             format_field(track => $track),
+            format_field(volume => $vol),
             ),
             $suffix;
 } while($loop);
@@ -77,8 +86,8 @@ do {
 sub long_format {
     my %opts = @_;
 
-    return sprintf '%s %s. %s (%s/%s) (%s "%s")',
-            @opts{qw/status track title time total_time artist album/};
+    return sprintf '%s [%s] %s. %s (%s/%s) (%s "%s")',
+            @opts{qw/status volume track title time total_time artist album/};
 }
 
 sub secs_to_time {
@@ -91,8 +100,8 @@ sub secs_to_time {
 sub short_format {
     my %opts = @_;
 
-    return sprintf '%s %s. %s',
-            @opts{qw/status track title/};
+    return sprintf '%s [%s] %s. %s',
+            @opts{qw/status volume track title/};
 }
 
 # h4x... Prompt color stuffz follows.
@@ -116,6 +125,7 @@ sub format_field {
         title => sub { '0;35m' },
         total_time => sub { '0;35m' },
         track => sub { '0;35m' },
+        volume => sub { '0;35m' },
     );
 
     my ($k,$v) = @_;
